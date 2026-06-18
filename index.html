@@ -674,14 +674,29 @@
                     <p class="text-xs text-slate-500">此時冰箱門上很乾淨，</p>
                     <p class="text-xs text-slate-400 font-semibold mt-1">點擊上方小圓球快速建立溫馨留言吧！</p>
                 </div>
-                <!-- 留言黏性排版 -->
-                <div id="memoContainer" class="grid grid-cols-2 gap-3 p-1">
+                <!-- 留言黏性排版 (已改為單行垂直排列) -->
+                <div id="memoContainer" class="grid grid-cols-1 gap-4 p-1">
                     <!-- JS 注入留言貼 -->
                 </div>
             </div>
 
             <div class="text-[10px] text-slate-500 pt-3 border-t border-borderDark/60 mt-3 text-center">
                 提示：留言直接點按即可修改文字，系統會就地即時儲存！
+            </div>
+
+            <!-- ✍️ 隨手塗鴉板 -->
+            <div class="border-t border-borderDark/60 mt-4 pt-4 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-accentBlue flex items-center gap-1">
+                        ✍️ 隨手塗鴉板
+                    </span>
+                    <button onclick="clearGraffiti()" class="text-[10px] bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold px-2 py-1 rounded transition select-none active:scale-95">
+                        清除畫布
+                    </button>
+                </div>
+                <div class="relative w-full h-[160px] bg-fridgeDark/60 border border-borderDark rounded-xl overflow-hidden shadow-inner">
+                    <canvas id="graffitiCanvas" class="w-full h-full cursor-crosshair touch-none"></canvas>
+                </div>
             </div>
         </section>
 
@@ -745,6 +760,9 @@
             // 執行第一次渲染列表
             renderFoodList();
             renderMemos();
+
+            // 啟動塗鴉板
+            initGraffiti();
 
             // 設定預設食材新增表單中的今日日期
             document.getElementById('foodExpiry').value = getOffsetDateString(7);
@@ -859,6 +877,9 @@
                 const matchesSearch = food.name.toLowerCase().includes(searchVal) || food.category.includes(searchVal);
                 return matchesTab && matchesSearch;
             });
+
+            // 按照過期日期升冪排序
+            filteredFoods.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
 
             // 如果沒資料，顯示空指示
             if (filteredFoods.length === 0) {
@@ -1088,9 +1109,13 @@
 
         // 刪除保存食材方法
         function deleteFood(id) {
-            state.foods = state.foods.filter(f => f.id !== id);
-            saveStateToLocal('fridge_foods', state.foods);
-            renderFoodList();
+            const food = state.foods.find(f => f.id === id);
+            const foodName = food ? food.name : '此食材';
+            if (confirm(`確認要刪除「${foodName}」嗎？`)) {
+                state.foods = state.foods.filter(f => f.id !== id);
+                saveStateToLocal('fridge_foods', state.foods);
+                renderFoodList();
+            }
         }
 
         function clearSearch() {
@@ -1149,14 +1174,14 @@
                 const colorClass = colorClasses[memo.color] || colorClasses.yellow;
 
                 return `
-                    <div class="sticky-note ${colorClass} p-3 rounded-lg border shadow-lg relative flex flex-col justify-between min-h-[90px] select-text">
+                    <div class="sticky-note ${colorClass} p-4 rounded-lg border shadow-lg relative flex flex-col justify-between min-h-[110px] select-text">
                         <!-- 刪除留言按鈕 -->
-                        <button onclick="deleteMemo('${memo.id}')" title="撕掉備忘" class="absolute top-1 right-2 w-5 h-5 flex items-center justify-center text-slate-800 hover:text-black hover:font-bold text-xs select-none">
+                        <button onclick="deleteMemo('${memo.id}')" title="撕掉備忘" class="absolute top-1 right-2 w-6 h-6 flex items-center justify-center text-slate-800 hover:text-black hover:font-bold text-sm select-none">
                             ✕
                         </button>
                         
-                        <!-- 留言內容 (支援雙擊或點擊直接就地編輯) -->
-                        <div class="pr-3 text-xs leading-relaxed font-sans font-semibold text-slate-900" 
+                        <!-- 留言內容 (支援雙擊或點擊直接就地編輯，字體放大) -->
+                        <div class="pr-4 text-base leading-relaxed font-sans font-bold text-slate-900" 
                              contenteditable="true" 
                              onblur="editMemoText('${memo.id}', this)"
                              title="點擊直接修改內容">
@@ -1207,9 +1232,11 @@
 
         // 撕掉留言
         function deleteMemo(id) {
-            state.memos = state.memos.filter(m => m.id !== id);
-            saveStateToLocal('fridge_memos', state.memos);
-            renderMemos();
+            if (confirm("確定要撕掉這張留言貼紙嗎？")) {
+                state.memos = state.memos.filter(m => m.id !== id);
+                saveStateToLocal('fridge_memos', state.memos);
+                renderMemos();
+            }
         }
 
 
@@ -1363,6 +1390,116 @@
                 osc.stop(audioCtx.currentTime + 0.45);
             } catch (error) {
                 console.error("目前瀏覽器拒絕或無法在未經觸控時合成聲波：", error);
+            }
+        }
+
+        // ==================== 9. 隨手塗鴉板 (Graffiti Board) ====================
+        let canvas, ctx;
+        let isDrawing = false;
+
+        function initGraffiti() {
+            canvas = document.getElementById('graffitiCanvas');
+            if (!canvas) return;
+            ctx = canvas.getContext('2d');
+
+            // 調整畫布實體尺寸
+            resizeCanvas();
+            // 在視窗大小改變時重設 (防跑版)
+            window.addEventListener('resize', resizeCanvas);
+
+            // 載入本地儲存的畫作
+            loadGraffiti();
+
+            // 滑鼠繪圖事件
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseleave', stopDrawing);
+
+            // 觸控繪圖事件 (特別適配老平板與防滾動干擾)
+            canvas.addEventListener('touchstart', startDrawingTouch, { passive: false });
+            canvas.addEventListener('touchmove', drawTouch, { passive: false });
+            canvas.addEventListener('touchend', stopDrawing);
+        }
+
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            // 備份現有塗鴉
+            const tempImage = canvas.toDataURL();
+            
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            // 畫筆屬性 (寬高改變後需重置)
+            ctx.strokeStyle = '#B2A4D4'; // 浪漫粉紫
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // 還原繪圖內容
+            const img = new Image();
+            img.onload = function() {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            };
+            img.src = tempImage;
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(e.offsetX, e.offsetY);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            ctx.lineTo(e.offsetX, e.offsetY);
+            ctx.stroke();
+        }
+
+        function startDrawingTouch(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            isDrawing = true;
+            ctx.beginPath();
+            ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+        }
+
+        function drawTouch(e) {
+            e.preventDefault();
+            if (!isDrawing) return;
+            const touch = e.touches[0];
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveGraffiti();
+            }
+        }
+
+        function clearGraffiti() {
+            if (confirm('確定要清除塗鴉板嗎？')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                localStorage.removeItem('fridge_graffiti');
+            }
+        }
+
+        function saveGraffiti() {
+            localStorage.setItem('fridge_graffiti', canvas.toDataURL());
+        }
+
+        function loadGraffiti() {
+            const dataUrl = localStorage.getItem('fridge_graffiti');
+            if (dataUrl) {
+                const img = new Image();
+                img.onload = function() {
+                    ctx.drawImage(img, 0, 0);
+                };
+                img.src = dataUrl;
             }
         }
     </script>
