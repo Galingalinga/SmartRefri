@@ -1424,8 +1424,6 @@
 
         function resizeCanvas() {
             const rect = canvas.getBoundingClientRect();
-            // 備份現有塗鴉
-            const tempImage = canvas.toDataURL();
             
             canvas.width = rect.width;
             canvas.height = rect.height;
@@ -1436,12 +1434,8 @@
             ctx.lineCap = 'round';
             ctx.lineJoin = 'round';
 
-            // 還原繪圖內容
-            const img = new Image();
-            img.onload = function() {
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            };
-            img.src = tempImage;
+            // 還原繪圖內容 (從 localStorage 還原，避免 confirm 對話框引起的非同步重置競爭)
+            loadGraffiti();
         }
 
         function startDrawing(e) {
@@ -1497,7 +1491,7 @@
             if (dataUrl) {
                 const img = new Image();
                 img.onload = function() {
-                    ctx.drawImage(img, 0, 0);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 };
                 img.src = dataUrl;
             }
