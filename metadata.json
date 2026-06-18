@@ -1,0 +1,6 @@
+{
+  "name": "Smart Refrigerator Panel",
+  "description": "A high-performance, single-file Smart Refrigerator dashboard designed for older tablets with local storage capability.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

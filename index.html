@@ -1,0 +1,1152 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>智慧冰箱中控面板 | Smart Fridge Panel</title>
+    <!-- 引入 Tailwind CSS Play CDN 確保單檔案可獨立運作，同時適配舊平板核心 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        fridgeDark: 'rgba(15, 12, 28, 0.72)',
+                        cardDark: 'rgba(25, 23, 43, 0.82)',
+                        borderDark: 'rgba(164, 174, 212, 0.22)',
+                        accentBlue: '#B2A4D4',       // 主色: 浪漫粉紫/薰衣草紫
+                        accentLavender: '#B2A4D4',   // 主色
+                        accentPeriwinkle: '#A4AED4', // 副色: 長春花藍/藍紫
+                        accentIceBlue: '#CEE4FE',    // 副色2: 透亮冰晶藍
+                        statusGreen: '#82C39B',       // 柔和綠色
+                        statusYellow: '#E4BE75',      // 柔和黃色
+                        statusRed: '#E58A8A'          // 柔和紅色
+                    },
+                    fontFamily: {
+                        sans: ['system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                        mono: ['Courier New', 'Courier', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 針對 2016 舊平板 Chrome 優化的自訂樣式 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(25, 23, 43, 0.9);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(164, 174, 212, 0.25);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #B2A4D4;
+        }
+        body {
+            background-color: #070610;
+            color: #E2E4E9;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        /* 便利貼擺正樣式 */
+        .sticky-note {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .active-btn {
+            transform: scale(0.96);
+        }
+        /* 全螢幕鬧鐘閃爍特效 */
+        @keyframes alert-flash {
+            0%, 100% { background-color: rgba(248, 81, 73, 0.2); }
+            50% { background-color: rgba(248, 81, 73, 0.7); }
+        }
+        .timer-warning-bg {
+            animation: alert-flash 0.8s infinite;
+        }
+        /* 輔助大點擊區域 */
+        .touch-target {
+            min-height: 48px;
+            min-width: 48px;
+        }
+
+        /* === 虛擬水族箱動畫特效 === */
+        @keyframes sway-slow {
+            0% { transform: rotate(-3deg) skewX(-2deg); }
+            100% { transform: rotate(3deg) skewX(2deg); }
+        }
+        @keyframes sway-medium {
+            0% { transform: rotate(-5deg) skewX(-3deg); }
+            100% { transform: rotate(5deg) skewX(3deg); }
+        }
+        @keyframes sway-fast {
+            0% { transform: rotate(-7deg) skewX(-4deg); }
+            100% { transform: rotate(7deg) skewX(4deg); }
+        }
+
+        @keyframes jellyfish-float-1 {
+            0% { transform: translateY(115vh) translateX(0); opacity: 0; }
+            10% { opacity: 0.52; }
+            90% { opacity: 0.52; }
+            100% { transform: translateY(-20vh) translateX(60px); opacity: 0; }
+        }
+        @keyframes jellyfish-float-2 {
+            0% { transform: translateY(115vh) translateX(0); opacity: 0; }
+            15% { opacity: 0.45; }
+            85% { opacity: 0.45; }
+            100% { transform: translateY(-20vh) translateX(-80px); opacity: 0; }
+        }
+        @keyframes jellyfish-float-3 {
+            0% { transform: translateY(115vh) translateX(0); opacity: 0; }
+            12% { opacity: 0.48; }
+            88% { opacity: 0.48; }
+            100% { transform: translateY(-20vh) translateX(-30px); opacity: 0; }
+        }
+
+        @keyframes jellyfish-pulse {
+            0%, 100% { transform: scaleY(1) scaleX(1); }
+            40% { transform: scaleY(0.78) scaleX(1.18); }
+            50% { transform: scaleY(1.1) scaleX(0.88); }
+        }
+
+        @keyframes bubble-rise {
+            0% { transform: translateY(115vh) translateX(0); opacity: 0; }
+            5% { opacity: 0.5; }
+            90% { opacity: 0.5; }
+            100% { transform: translateY(-15vh) translateX(40px); opacity: 0; }
+        }
+
+        /* 智慧冰箱面板文字發光特效 */
+        .text-glow {
+            color: #ffffff;
+            font-weight: 700;
+            text-shadow: 0 0 8px rgba(178, 164, 212, 0.7), 0 0 20px rgba(164, 174, 212, 0.45);
+            animation: glow-pulse 3s ease-in-out infinite alternate;
+        }
+        @keyframes glow-pulse {
+            0% {
+                text-shadow: 0 0 6px rgba(178, 164, 212, 0.6), 0 0 15px rgba(164, 174, 212, 0.35);
+            }
+            100% {
+                text-shadow: 0 0 14px rgba(178, 164, 212, 0.95), 0 0 30px rgba(164, 174, 212, 0.65), 0 0 45px rgba(206, 228, 254, 0.4);
+            }
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100 overflow-x-hidden select-none">
+
+    <!-- 虛擬水族箱底層背景 (深海漸層，放在最底層 z-0) -->
+    <div class="fixed inset-0 z-0 bg-gradient-to-b from-[#080614] via-[#0e1124] to-[#04050a] pointer-events-none"></div>
+
+    <!-- 虛擬水族箱前層漂浮物 (水母、泡泡與海草，放在 z-30 以免被資訊卡片遮擋) -->
+    <div class="fixed inset-0 z-30 pointer-events-none overflow-hidden">
+        <!-- 頂部波光折射效果 -->
+        <div class="absolute inset-0 bg-gradient-to-b from-[#B2A4D4]/10 via-transparent to-transparent opacity-60 mix-blend-screen"></div>
+
+        <!-- 水汽泡泡組 -->
+        <div class="absolute w-2 h-2 rounded-full border border-white/20 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 12%; animation: bubble-rise 15s linear infinite; animation-delay: 1s;"></div>
+        <div class="absolute w-3 h-3 rounded-full border border-white/25 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 28%; animation: bubble-rise 18s linear infinite; animation-delay: 5s;"></div>
+        <div class="absolute w-1.5 h-1.5 rounded-full border border-white/15 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 45%; animation: bubble-rise 13s linear infinite; animation-delay: 0s;"></div>
+        <div class="absolute w-2.5 h-2.5 rounded-full border border-white/20 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 65%; animation: bubble-rise 20s linear infinite; animation-delay: 8s;"></div>
+        <div class="absolute w-1 h-1 rounded-full border border-white/10 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 78%; animation: bubble-rise 12s linear infinite; animation-delay: 3s;"></div>
+        <div class="absolute w-3.5 h-3.5 rounded-full border border-white/30 bg-white/5 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3)]" style="left: 90%; animation: bubble-rise 16s linear infinite; animation-delay: 11s;"></div>
+
+        <!-- 漂浮水母 1 (冰晶藍色/透亮藍，左側) -->
+        <div class="absolute" style="left: 7%; animation: jellyfish-float-1 26s linear infinite; animation-delay: 0s;">
+            <div class="origin-top" style="animation: jellyfish-pulse 4.5s ease-in-out infinite;">
+                <!-- 水母帽頂 -->
+                <div class="w-12 h-10 rounded-t-full bg-gradient-to-b from-[#CEE4FE]/30 to-[#A4AED4]/10 border-t border-[#CEE4FE]/40 shadow-[0_0_15px_rgba(206,228,254,0.45)] relative">
+                    <!-- 水母鬚鬚 -->
+                    <div class="absolute -bottom-10 left-1 right-1 flex justify-around">
+                        <div class="w-[1.5px] h-10 bg-gradient-to-b from-[#CEE4FE]/40 to-transparent rounded origin-top" style="animation: sway-medium 2.5s ease-in-out infinite alternate;"></div>
+                        <div class="w-[1.5px] h-14 bg-gradient-to-b from-[#A4AED4]/40 to-transparent rounded origin-top" style="animation: sway-slow 3.2s ease-in-out infinite alternate; animation-delay: -1s;"></div>
+                        <div class="w-[1.5px] h-11 bg-gradient-to-b from-[#CEE4FE]/40 to-transparent rounded origin-top" style="animation: sway-medium 2.1s ease-in-out infinite alternate; animation-delay: -0.5s;"></div>
+                        <div class="w-[1.5px] h-13 bg-gradient-to-b from-[#A4AED4]/40 to-transparent rounded origin-top" style="animation: sway-slow 2.8s ease-in-out infinite alternate; animation-delay: -1.5s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 漂浮水母 2 (粉紫色/薰衣草，右側偏中) -->
+        <div class="absolute" style="left: 48%; animation: jellyfish-float-2 30s linear infinite; animation-delay: -4s;">
+            <div class="origin-top" style="animation: jellyfish-pulse 5.2s ease-in-out infinite;">
+                <!-- 水母帽頂 -->
+                <div class="w-10 h-8 rounded-t-full bg-gradient-to-b from-[#B2A4D4]/30 to-[#A4AED4]/10 border-t border-[#B2A4D4]/45 shadow-[0_0_15px_rgba(178,164,212,0.45)] relative">
+                    <!-- 水母鬚鬚 -->
+                    <div class="absolute -bottom-9 left-1 right-1 flex justify-around">
+                        <div class="w-[1.5px] h-9 bg-gradient-to-b from-[#B2A4D4]/40 to-transparent rounded origin-top" style="animation: sway-slow 3s ease-in-out infinite alternate;"></div>
+                        <div class="w-[1.5px] h-12 bg-gradient-to-b from-[#A4AED4]/35 to-transparent rounded origin-top" style="animation: sway-medium 2.4s ease-in-out infinite alternate; animation-delay: -0.5s;"></div>
+                        <div class="w-[1.5px] h-8 bg-gradient-to-b from-[#B2A4D4]/40 to-transparent rounded origin-top" style="animation: sway-fast 1.8s ease-in-out infinite alternate; animation-delay: -1.2s;"></div>
+                        <div class="w-[1.5px] h-11 bg-gradient-to-b from-[#A4AED4]/35 to-transparent rounded origin-top" style="animation: sway-slow 3.5s ease-in-out infinite alternate; animation-delay: -2s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 漂浮水母 3 (長春花藍，右側) -->
+        <div class="absolute" style="right: 12%; animation: jellyfish-float-3 28s linear infinite; animation-delay: -10s;">
+            <div class="origin-top" style="animation: jellyfish-pulse 4.8s ease-in-out infinite;">
+                <!-- 水母帽頂 -->
+                <div class="w-13 h-11 rounded-t-full bg-gradient-to-b from-[#A4AED4]/30 to-[#CEE4FE]/10 border-t border-[#A4AED4]/40 shadow-[0_0_15px_rgba(164,174,212,0.42)] relative">
+                    <!-- 水母鬚鬚 -->
+                    <div class="absolute -bottom-11 left-1.5 right-1.5 flex justify-around">
+                        <div class="w-[1.5px] h-11 bg-gradient-to-b from-[#A4AED4]/40 to-transparent rounded origin-top" style="animation: sway-medium 2.2s ease-in-out infinite alternate;"></div>
+                        <div class="w-[1.5px] h-15 bg-gradient-to-b from-[#CEE4FE]/40 to-transparent rounded origin-top" style="animation: sway-slow 3s ease-in-out infinite alternate; animation-delay: -0.7s;"></div>
+                        <div class="w-[1.5px] h-10 bg-gradient-to-b from-[#A4AED4]/40 to-transparent rounded origin-top" style="animation: sway-medium 2.6s ease-in-out infinite alternate; animation-delay: -1.3s;"></div>
+                        <div class="w-[1.5px] h-14 bg-gradient-to-b from-[#CEE4FE]/40 to-transparent rounded origin-top" style="animation: sway-slow 2.5s ease-in-out infinite alternate; animation-delay: -1.8s;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- 全螢幕閃爍警示 Overlay (當廚房計時器結束時啟用) -->
+    <div id="fullScreenAlert" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-red-900/90 timer-warning-bg p-6 text-center">
+        <svg class="w-24 h-24 text-white mb-6 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        <h1 class="text-5xl font-black text-white tracking-widest mb-4">⏱️ 計時時間到！</h1>
+        <p class="text-2xl text-red-100 mb-8 font-semibold">您設定的廚房料理時間已結束</p>
+        <button onclick="stopTimerAlert()" class="bg-white text-red-900 font-bold px-12 py-5 rounded-full text-2xl shadow-2xl active:scale-95 transition-transform hover:bg-neutral-100 touch-target">
+            點擊關閉警報聲
+        </button>
+    </div>
+
+    <!-- 頂部導航儀表板與系統資訊列 -->
+    <header id="header-bar" class="bg-cardDark/80 backdrop-blur-md border-b border-borderDark px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-40 shadow-md">
+        <!-- 冰箱基本資訊與模式 -->
+        <div class="flex items-center gap-4">
+            <div class="bg-accentBlue/10 text-accentBlue p-3 rounded-2xl border border-accentBlue/20">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-2xl font-bold tracking-tight text-glow">智慧冰箱面板</h1>
+            </div>
+        </div>
+
+        <!-- 冰箱動態時鐘與目前日期 (100% 離線本機顯示) -->
+        <div class="flex flex-col items-center justify-center bg-fridgeDark py-2 px-12 rounded-2xl border border-borderDark max-w-md w-full md:w-auto">
+            <div id="panelTime" class="text-3xl font-black text-white font-mono tracking-widest">
+                --:--:--
+            </div>
+            <div id="panelDate" class="text-xs font-semibold text-accentBlue mt-0.5 tracking-wider">
+                ---- 年 -- 月 -- 日 星期-
+            </div>
+        </div>
+    </header>
+
+    <!-- 二欄儀表板主工作區 (不需往上滑動、一目了然) -->
+    <main class="flex-grow p-4 md:p-6 grid grid-cols-1 md:grid-cols-12 gap-6 max-w-[1700px] w-full mx-auto relative z-20">
+        
+        <!-- [左半邊特大區：庫存與計時器雙頁籤切換] (Span 8) -->
+        <section class="md:col-span-8 flex flex-col bg-cardDark/85 backdrop-blur-md border border-borderDark rounded-2xl shadow-sm overflow-hidden min-h-[580px]">
+            <!-- 頁籤導航欄 (高寬度、大字體、好點按) -->
+            <div class="flex border-b border-borderDark bg-fridgeDark/60 p-1.5 gap-1.5">
+                <button id="tabButtonStock" onclick="switchMainTab('stock')" class="flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-cardDark text-accentBlue border border-borderDark select-none touch-target">
+                     食材庫存管理
+                </button>
+                <button id="tabButtonTimer" onclick="switchMainTab('timer')" class="flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer text-slate-400 hover:text-white select-none touch-target">
+                     廚房料理計時器
+                </button>
+            </div>
+
+            <!-- Tab 1: 食材保鮮庫庫存 (預設顯示) -->
+            <div id="tabContentStock" class="p-4 md:p-5 flex flex-col flex-grow">
+                <div class="flex items-center justify-between border-b border-borderDark pb-3 mb-4">
+                    <h2 class="text-xl font-bold flex items-center gap-2 text-white">
+                         食材保鮮庫庫存
+                    </h2>
+                    <button onclick="openAddForm()" class="bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 shadow active:scale-95 transition-all touch-target font-bold">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        新增食材
+                    </button>
+                </div>
+
+                <!-- 保鮮狀態一覽統計指標 (點擊可快速過濾) -->
+                <div class="grid grid-cols-4 gap-2 mb-4">
+                    <button onclick="filterStatus('all')" id="stat-all" class="bg-borderDark/40 hover:bg-borderDark/80 p-2.5 rounded-xl text-center border border-slate-700 transition cursor-pointer flex flex-col justify-between items-center ring-2 ring-accentBlue">
+                        <span class="text-xs text-slate-400">全部</span>
+                        <span id="count-all" class="text-xl font-bold mt-1 text-slate-100">-</span>
+                    </button>
+                    <button onclick="filterStatus('expired')" id="stat-expired" class="bg-red-950/20 hover:bg-red-950/40 p-2.5 rounded-xl text-center border border-statusRed/20 transition cursor-pointer flex flex-col justify-between items-center">
+                        <span class="text-xs text-statusRed">已過期</span>
+                        <span id="count-expired" class="text-xl font-bold mt-1 text-statusRed">-</span>
+                    </button>
+                    <button onclick="filterStatus('warning')" id="stat-warning" class="bg-yellow-950/20 hover:bg-yellow-950/40 p-2.5 rounded-xl text-center border border-statusYellow/20 transition cursor-pointer flex flex-col justify-between items-center">
+                        <span class="text-xs text-statusYellow">快過期</span>
+                        <span id="count-warning" class="text-xl font-bold mt-1 text-statusYellow">-</span>
+                    </button>
+                    <button onclick="filterStatus('fresh')" id="stat-fresh" class="bg-green-950/20 hover:bg-green-950/40 p-2.5 rounded-xl text-center border border-statusGreen/20 transition cursor-pointer flex flex-col justify-between items-center">
+                        <span class="text-xs text-statusGreen">新鮮</span>
+                        <span id="count-fresh" class="text-xl font-bold mt-1 text-statusGreen">-</span>
+                    </button>
+                </div>
+
+                <!-- 新增 / 編輯食材抽屜式網頁表單 (預設隱藏，按鈕展開) -->
+                <div id="foodFormContainer" class="hidden bg-fridgeDark p-4 rounded-xl border border-borderDark mb-4 relative transition-all">
+                <button onclick="closeFoodForm()" class="absolute top-2.5 right-2.5 text-slate-400 hover:text-white p-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                <h3 id="formTitle" class="text-md font-bold mb-3 text-accentBlue">新增保鮮食材</h3>
+                
+                <!-- 新增時輔助舊平板的 一鍵便利小標籤 (免打字，提升效率) -->
+                <div id="quickSuggests" class="mb-3">
+                    <span class="text-xs text-slate-400 block mb-1">常用推薦（點擊即自動填入）：</span>
+                    <div class="flex flex-wrap gap-1.5 max-h-[75px] overflow-y-auto">
+                        <span onclick="applySuggest('鮮牛奶', '冷藏室', 5)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">牛奶</span>
+                        <span onclick="applySuggest('安心雞蛋', '冷藏室', 14)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">雞蛋</span>
+                        <span onclick="applySuggest('香吉士柳橙', '冷藏室', 10)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">柳橙</span>
+                        <span onclick="applySuggest('高麗菜', '冷藏室', 7)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">高麗菜</span>
+                        <span onclick="applySuggest('嫩鮮豬肉片', '冷凍庫', 4)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">豬肉</span>
+                        <span onclick="applySuggest('挪威鮭魚', '冷凍庫', 3)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">鮭魚</span>
+                        <span onclick="applySuggest('切片起司', '冷藏室', 15)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">起司</span>
+                        <span onclick="applySuggest('原味優格', '冷藏室', 7)" class="text-xs bg-slate-800/80 text-[#CEE4FE] border border-borderDark/40 hover:bg-accentPeriwinkle hover:text-slate-950 px-2.5 py-1.5 rounded cursor-pointer transition select-none transition-colors">優格</span>
+                    </div>
+                </div>
+
+                <form id="foodForm" onsubmit="saveFoodItem(event)" class="space-y-3">
+                    <input type="hidden" id="editItemId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">食材名稱</label>
+                            <input type="text" id="foodName" required placeholder="如：小農鮮乳、高麗菜" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-accentBlue">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">存放位置</label>
+                            <select id="foodCategory" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white focus:outline-none focus:border-accentBlue">
+                                <option value="冷藏室">冷藏室</option>
+                                <option value="冷凍庫">冷凍庫</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">庫存數量</label>
+                            <div class="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                                <button type="button" onclick="adjustFormQty(-1)" class="px-4 py-2 bg-slate-700 text-xl font-bold select-none h-11">-</button>
+                                <input type="number" id="foodQty" required min="1" value="1" class="w-full text-center bg-transparent border-0 text-sm text-white py-2 px-4 focus:ring-0 focus:outline-none">
+                                <button type="button" onclick="adjustFormQty(1)" class="px-4 py-2 bg-slate-700 text-xl font-bold select-none h-11">+</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">過期日期 (有限期限)</label>
+                            <div class="flex gap-1.5">
+                                <input type="date" id="foodExpiry" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-accentBlue font-sans">
+                                <!-- 快捷日期按鈕 (舊平板點選超方便!) -->
+                                <button type="button" onclick="addDaysToExpiry(3)" class="bg-slate-700 text-slate-300 px-2 py-1 text-xs rounded hover:bg-slate-600 font-semibold select-none h-11">+3天</button>
+                                <button type="button" onclick="addDaysToExpiry(7)" class="bg-slate-700 text-slate-300 px-2 py-1 text-xs rounded hover:bg-slate-600 font-semibold select-none h-11">+7天</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 justify-end pt-2">
+                        <button type="button" onclick="closeFoodForm()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-lg text-xs select-none touch-target">取消</button>
+                        <button type="submit" class="px-4 py-2 bg-accentBlue hover:bg-sky-400 text-fridgeDark font-bold rounded-lg text-xs select-none touch-target">保存食材</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 食材搜尋、篩選與列表列 -->
+            <div class="mb-3 relative">
+                <input type="text" id="foodSearch" oninput="renderFoodList()" placeholder="搜尋庫存內食材..." class="w-full bg-fridgeDark border border-borderDark rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-accentBlue">
+                <button onclick="clearSearch()" id="clearSearchBtn" class="hidden absolute right-3 top-3 text-slate-500 hover:text-slate-300">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- 食材保鮮表格與視窗區（適合手指點擊、高對比觸碰） -->
+            <div class="flex-grow overflow-y-auto max-h-[460px] border border-borderDark rounded-xl bg-fridgeDark">
+                <div id="emptyFridgeMsg" class="hidden flex flex-col items-center justify-center py-16 px-4 text-center">
+                    <div class="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 border border-slate-700 mb-2">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-3m-11 0h3m-3 0h8"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-400 mt-2">冰箱空空如也！</h3>
+                    <p class="text-xs text-slate-500 mt-1 max-w-xs">快點擊右上角新增，錄入美味食材儲備吧。</p>
+                </div>
+                <ul id="foodList" class="divide-y divide-borderDark">
+                    <!-- JavaScript 動態填充食材 -->
+                </ul>
+            </div>
+            </div> <!-- Close tabContentStock -->
+
+            <!-- Tab 2: 廚房料理計時器 (預設隱藏) -->
+            <div id="tabContentTimer" class="hidden p-4 md:p-8 flex flex-col flex-grow justify-center">
+                <div class="border-b border-borderDark pb-3 mb-6">
+                    <h2 class="text-xl font-bold text-white">
+                        廚房料理計時器
+                    </h2>
+                </div>
+
+                <!-- 計時器顯示與調整介面 -->
+                <div class="flex flex-col items-center justify-center my-4 max-w-xl mx-auto w-full">
+                    <!-- 大計時器文字區 -->
+                    <div id="timerDisplay" class="text-6xl md:text-7xl font-black font-mono tracking-widest text-accentBlue mb-6 select-none">
+                        00:00
+                    </div>
+
+                    <!-- 常用預設時間選擇 (超便利，一鍵料理!) -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6 w-full">
+                        <button onclick="setTimerPreset(3)" class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">3分 水煮蛋</button>
+                        <button onclick="setTimerPreset(5)" class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">5分 泡麵</button>
+                        <button onclick="setTimerPreset(10)" class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">10分 蒸魚</button>
+                        <button onclick="setTimerPreset(15)" class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">15分 水餃</button>
+                    </div>
+
+                    <!-- 分秒手動微調大按鈕 (方便廚師大叔點按) -->
+                    <div class="grid grid-cols-4 gap-2 mb-6 w-full">
+                        <button onclick="adjustTimerSeconds(-60)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-3 rounded-xl text-sm select-none touch-target active:bg-slate-600">-1分</button>
+                        <button onclick="adjustTimerSeconds(-10)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-3 rounded-xl text-sm select-none touch-target active:bg-slate-600">-10秒</button>
+                        <button onclick="adjustTimerSeconds(10)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-3 rounded-xl text-sm select-none touch-target active:bg-slate-600">+10秒</button>
+                        <button onclick="adjustTimerSeconds(60)" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold py-3 rounded-xl text-sm select-none touch-target active:bg-slate-600">+1分</button>
+                    </div>
+
+                    <!-- 計時控制核心按鈕 (雙按鈕超大高對比) -->
+                    <div class="flex gap-4 w-full">
+                        <button onclick="toggleTimer()" id="timerControlBtn" class="flex-grow bg-statusGreen hover:bg-emerald-600 text-slate-100 font-bold py-4 px-6 rounded-xl text-lg flex items-center justify-center gap-2 shadow select-none active:scale-95 transition touch-target">
+                            <span id="timerControlIcon" class="flex items-center">
+                                <svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </span>
+                            <span id="timerControlText">開始倒數</span>
+                        </button>
+                        <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-bold px-8 py-4 rounded-xl text-md select-none active:scale-95 transition touch-target">
+                            重設
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 計時音效設置提示 -->
+                <div class="flex items-center justify-between text-xs text-slate-400 mt-auto pt-6 border-t border-borderDark/40">
+                    <span class="flex items-center gap-1">計時結束本機音訊防噪音：開</span>
+                    <button onclick="testBeepSound()" class="text-accentBlue hover:underline active:scale-95 font-semibold">測試響鈴音量</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- [右半邊：家人溫馨留言板看板] (Span 4) -->
+        <section class="md:col-span-4 flex flex-col bg-cardDark/85 backdrop-blur-md border border-borderDark rounded-2xl p-4 md:p-5 shadow-sm overflow-hidden min-h-[580px]">
+            <div class="border-b border-borderDark pb-3 mb-4 flex items-center justify-between">
+                <h2 class="text-xl font-bold flex items-center gap-1.5 text-white">
+                    家人留言板
+                </h2>
+                <!-- 新增留言按鈕與色彩挑選 -->
+                <div class="flex items-center gap-1.5">
+                    <button onclick="addMemo('pink')" class="w-7 h-7 rounded-full bg-[#B2A4D4] border border-white/20 active:scale-95 cursor-pointer" title="新增粉紫貼紙"></button>
+                    <button onclick="addMemo('yellow')" class="w-7 h-7 rounded-full bg-[#FFEEAD] border border-white/20 active:scale-95 cursor-pointer" title="新增鵝黃貼紙"></button>
+                    <button onclick="addMemo('teal')" class="w-7 h-7 rounded-full bg-[#96CEB4] border border-white/20 active:scale-95 cursor-pointer" title="新增粉綠貼紙"></button>
+                    <button onclick="addMemo('blue')" class="w-7 h-7 rounded-full bg-[#CEE4FE] border border-white/20 active:scale-95 cursor-pointer" title="新增冰藍貼紙"></button>
+                </div>
+            </div>
+
+            <!-- 留言板卡片區 -->
+            <div class="flex-grow overflow-y-auto max-h-[460px]">
+                <div id="emptyMemoMsg" class="hidden text-center py-12">
+                    <p class="text-xs text-slate-500">此時冰箱門上很乾淨，</p>
+                    <p class="text-xs text-slate-400 font-semibold mt-1">點擊上方小圓球快速建立溫馨留言吧！</p>
+                </div>
+                <!-- 留言黏性排版 -->
+                <div id="memoContainer" class="grid grid-cols-2 gap-3 p-1">
+                    <!-- JS 注入留言貼 -->
+                </div>
+            </div>
+
+            <div class="text-[10px] text-slate-500 pt-3 border-t border-borderDark/60 mt-3 text-center">
+                提示：留言直接點按即可修改文字，系統會就地即時儲存！
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 底部隱藏 -->
+
+    <!-- Vanilla Javascript：冰箱邏輯與本機資料庫控制處理 -->
+    <script>
+        // ==================== 1. 初始化資料結構與預設值定義 ====================
+        
+        // 預設冰箱存放食材資料
+        const DEFAULT_FOODS = [
+            { id: "1", name: "鮮奶 936ml", category: "冷藏室", qty: 1, expiry: getOffsetDateString(2) }, // 今日 + 2天（快過期）
+            { id: "2", name: "優質土洗特選蛋", category: "冷藏室", qty: 10, expiry: getOffsetDateString(8) }, // 今日 + 8天（新鮮）
+            { id: "3", name: "草莓起司吐司", category: "冷藏室", qty: 1, expiry: getOffsetDateString(-1) }, // 昨日已到期（已過期）
+            { id: "4", name: "嫩里肌梅花豬肉片", category: "冷凍庫", qty: 2, expiry: getOffsetDateString(1) }, // 今日 + 1天（即將過期）
+            { id: "5", name: "切片高麗菜", category: "冷藏室", qty: 1, expiry: getOffsetDateString(5) }, // 今日 + 5天（新鮮）
+            { id: "6", name: "有機富士蘋果", category: "冷藏室", qty: 4, expiry: getOffsetDateString(15) } // 今日 + 15天（新鮮）
+        ];
+
+        // 預設家人溫馨留言
+        const DEFAULT_MEMOS = [
+            { id: "m1", text: "媽媽：牛奶快過期了，今天記得一定要先喝完喔！", color: "yellow", date: "08:30" },
+            { id: "m2", text: "爸爸：今晚我和合作商聚餐，不用煮我的飯囉。", color: "pink", date: "16:21" },
+            { id: "m3", text: "哥哥：雪櫃的冰淇淋是我的！請不要偷吃囉。", color: "teal", date: "前天" }
+        ];
+
+        // 輔助函式：取得目前時間偏差日期字串格式 (YYYY-MM-DD)
+        function getOffsetDateString(daysOffset) {
+            const d = new Date();
+            d.setDate(d.getDate() + daysOffset);
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${date}`;
+        }
+
+        // ==================== 2. 全系統狀態管理器 (State) ====================
+        let state = {
+            foods: [],
+            memos: [],
+            activeFilter: 'all',  // all, expired, warning, fresh
+            timer: {
+                totalSeconds: 0,
+                remainingSeconds: 0,
+                intervalId: null,
+                isRunning: false
+            }
+        };
+
+        // ==================== 3. 系統初始化配置與載入機制 ====================
+        window.addEventListener('DOMContentLoaded', () => {
+            // 從 LocalStorage 載入，或寫入預設值
+            state.foods = getLocalData('fridge_foods', DEFAULT_FOODS);
+            state.memos = getLocalData('fridge_memos', DEFAULT_MEMOS);
+
+            // 啟動實時時鐘核心 (Real-time clock)
+            startClock();
+
+            // 執行第一次渲染列表
+            renderFoodList();
+            renderMemos();
+
+            // 設定預設食材新增表單中的今日日期
+            document.getElementById('foodExpiry').value = getOffsetDateString(7);
+        });
+
+        // 本地儲存資料安全讀取輔助
+        function getLocalData(key, defaultValue) {
+            const data = localStorage.getItem(key);
+            if (data) {
+                try {
+                    return JSON.parse(data);
+                } catch (e) {
+                    console.error("解析 LocalStorage 發生錯誤: " + key, e);
+                    return defaultValue;
+                }
+            }
+            // 寫入預設
+            localStorage.setItem(key, JSON.stringify(defaultValue));
+            return defaultValue;
+        }
+
+        // 寫入 LocalStorage
+        function saveStateToLocal(key, value) {
+            localStorage.setItem(key, JSON.stringify(value));
+        }
+
+        // ==================== 4. 實時時鐘核心 ====================
+        function startClock() {
+            const daysArr = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            
+            function updateClockTime() {
+                const now = new Date();
+                const hh = String(now.getHours()).padStart(2, '0');
+                const mm = String(now.getMinutes()).padStart(2, '0');
+                const ss = String(now.getSeconds()).padStart(2, '0');
+                
+                const timeString = `${hh}:${mm}:${ss}`;
+                
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const date = String(now.getDate()).padStart(2, '0');
+                const day = daysArr[now.getDay()];
+                const dateString = `${year} 年 ${month} 月 ${date} 日 ${day}`;
+
+                document.getElementById('panelTime').innerText = timeString;
+                document.getElementById('panelDate').innerText = dateString;
+            }
+
+            updateClockTime();
+            setInterval(updateClockTime, 1000);
+        }
+
+        // ==================== 5. 食材管理器核心逻辑 (Column 1) ====================
+        
+        // 取得有效分類狀態：已過期 (0或負值), 即將過期 (1至3天內), 新鮮 (正4天以上)
+        function getFoodStatus(expiryStr) {
+            const today = new Date();
+            // 去除時分秒干擾
+            today.setHours(0, 0, 0, 0);
+            
+            const expiry = new Date(expiryStr);
+            expiry.setHours(0, 0, 0, 0);
+
+            const diffTime = expiry.getTime() - today.getTime();
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return { code: 'expired', label: '已過期', days: diffDays, class: 'text-statusRed bg-red-950/30 border-statusRed/30' };
+            } else if (diffDays <= 3) {
+                return { code: 'warning', label: '快過期', days: diffDays, class: 'text-statusYellow bg-yellow-950/30 border-statusYellow/30' };
+            } else {
+                return { code: 'fresh', label: '正常保鮮', days: diffDays, class: 'text-statusGreen bg-green-950/30 border-statusGreen/30' };
+            }
+        }
+
+        // 重新計算指標計數器並刷新對應按鈕
+        function updateCounters() {
+            let counts = { all: 0, expired: 0, warning: 0, fresh: 0 };
+            
+            state.foods.forEach(food => {
+                const status = getFoodStatus(food.expiry);
+                counts.all++;
+                counts[status.code]++;
+            });
+
+            document.getElementById('count-all').innerText = counts.all;
+            document.getElementById('count-expired').innerText = counts.expired;
+            document.getElementById('count-warning').innerText = counts.warning;
+            document.getElementById('count-fresh').innerText = counts.fresh;
+        }
+
+        // 主要渲染食材列表
+        function renderFoodList() {
+            const listEl = document.getElementById('foodList');
+            const searchVal = document.getElementById('foodSearch').value.toLowerCase();
+            const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+            // 是否顯示清除按鈕
+            if (searchVal) {
+                clearSearchBtn.classList.remove('hidden');
+            } else {
+                clearSearchBtn.classList.add('hidden');
+            }
+
+            // 更新頂級指標
+            updateCounters();
+
+            // 根據選中 Tab 及搜尋值過濾
+            const filteredFoods = state.foods.filter(food => {
+                const status = getFoodStatus(food.expiry);
+                const matchesTab = (state.activeFilter === 'all') || (status.code === state.activeFilter);
+                const matchesSearch = food.name.toLowerCase().includes(searchVal) || food.category.includes(searchVal);
+                return matchesTab && matchesSearch;
+            });
+
+            // 如果沒資料，顯示空指示
+            if (filteredFoods.length === 0) {
+                document.getElementById('emptyFridgeMsg').classList.remove('hidden');
+                listEl.innerHTML = '';
+                return;
+            } else {
+                document.getElementById('emptyFridgeMsg').classList.add('hidden');
+            }
+
+            // 類別文字簡稱表
+            const catShorthands = {
+                '冷藏室': '冷藏',
+                '冷凍庫': '冷凍',
+                '乳製品': '冷藏',
+                '肉類/海鮮': '冷凍',
+                '蔬果': '冷藏',
+                '點心/飲料': '冷藏',
+                '熟食/其他': '冷藏'
+            };
+
+            // 渲染
+            listEl.innerHTML = filteredFoods.map(food => {
+                const status = getFoodStatus(food.expiry);
+                const tagLabel = catShorthands[food.category] || '冷藏';
+                
+                // 決定過期天數排版及顯示
+                let expiryText = '';
+                if (status.days < 0) {
+                    expiryText = `<span class="text-xs text-statusRed font-bold">已過期 ${Math.abs(status.days)} 天</span>`;
+                } else if (status.days === 0) {
+                    expiryText = `<span class="text-xs text-statusYellow font-bold">今日到期！</span>`;
+                } else if (status.days <= 3) {
+                    expiryText = `<span class="text-xs text-statusYellow font-bold">剩 ${status.days} 天即期</span>`;
+                } else {
+                    expiryText = `<span class="text-xs text-slate-400">剩 ${status.days} 天過期</span>`;
+                }
+
+                return `
+                    <li class="p-4 hover:bg-slate-800/40 transition duration-150 flex flex-col md:flex-row md:items-center justify-between gap-3 food-row-item">
+                        <!-- 食材基本資料 -->
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-bold text-accentBlue bg-slate-800/80 px-2 rounded-xl text-center flex items-center justify-center border border-slate-700/50 w-12 h-12 select-none">${tagLabel}</span>
+                            <div>
+                                <h4 class="text-lg font-bold text-white tracking-wide">${food.name}</h4>
+                                <div class="flex items-center gap-1.5 mt-1 flex-wrap">
+                                    <span class="text-[10px] bg-slate-800 text-slate-400 font-semibold px-2 py-0.5 rounded border border-slate-700">${food.category}</span>
+                                    <span class="text-[10px] font-semibold px-2 py-0.5 rounded border ${status.class}">${status.label}</span>
+                                    <span class="text-[10px] text-slate-400 font-mono">過期日: ${food.expiry}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 數量微調與控制大按鈕組 (特大 touch-target 方便在廚房點選) -->
+                        <div class="flex items-center justify-between md:justify-end gap-3 border-t border-borderDark/50 pt-2.5 md:border-0 md:pt-0">
+                            <!-- 過期狀態 -->
+                            <div class="text-right pr-2">
+                                ${expiryText}
+                            </div>
+
+                            <div class="flex items-center bg-fridgeDark border border-borderDark rounded-xl overflow-hidden shadow-inner">
+                                <button onclick="changeStockQty('${food.id}', -1)" type="button" class="w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-lg select-none active:bg-slate-600 border-r border-borderDark touch-target">-</button>
+                                <span class="px-4 min-w-[3.5rem] text-center font-bold font-mono text-base text-yellow-400 select-none">${food.qty}</span>
+                                <button onclick="changeStockQty('${food.id}', 1)" type="button" class="w-10 h-10 flex items-center justify-center bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-lg select-none active:bg-slate-600 border-l border-borderDark touch-target">+</button>
+                            </div>
+
+                            <!-- 編輯與刪除 -->
+                            <div class="flex gap-1.5">
+                                <button onclick="startEditFood('${food.id}')" title="編輯" class="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 active:scale-95 touch-target flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                                </button>
+                                <button onclick="deleteFood('${food.id}')" title="刪除食材" class="p-2.5 rounded-xl bg-red-950/20 hover:bg-red-900/40 border border-statusRed/30 text-statusRed active:scale-95 touch-target flex items-center justify-center">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        // 過濾食材狀態篩選
+        function filterStatus(status) {
+            state.activeFilter = status;
+            
+            // 更新篩選鈕醒目框
+            ['all', 'expired', 'warning', 'fresh'].forEach(tab => {
+                const btn = document.getElementById(`stat-${tab}`);
+                if (tab === status) {
+                    btn.classList.add('ring-2', 'ring-accentBlue');
+                    btn.classList.remove('border-slate-700', 'border-statusRed/20', 'border-statusYellow/20', 'border-statusGreen/20');
+                } else {
+                    btn.classList.remove('ring-2', 'ring-accentBlue');
+                    if(tab === 'all') btn.classList.add('border-slate-700');
+                    if(tab === 'expired') btn.classList.add('border-statusRed/20');
+                    if(tab === 'warning') btn.classList.add('border-statusYellow/20');
+                    if(tab === 'fresh') btn.classList.add('border-statusGreen/20');
+                }
+            });
+            renderFoodList();
+        }
+
+        // 食材快速新增推薦點擊
+        function applySuggest(name, category, daysOffset) {
+            document.getElementById('foodName').value = name;
+            document.getElementById('foodCategory').value = category;
+            document.getElementById('foodExpiry').value = getOffsetDateString(daysOffset);
+            document.getElementById('foodQty').value = 1;
+        }
+
+        // 表單微調數量鍵
+        function adjustFormQty(delta) {
+            const qtyInput = document.getElementById('foodQty');
+            let val = parseInt(qtyInput.value) || 1;
+            qtyInput.value = Math.max(1, val + delta);
+        }
+
+        // 表單增加過期天數快捷鍵
+        function addDaysToExpiry(days) {
+            const currentVal = document.getElementById('foodExpiry').value;
+            let d = new Date();
+            if (currentVal) {
+                d = new Date(currentVal);
+            }
+            d.setDate(d.getDate() + days);
+            
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            document.getElementById('foodExpiry').value = `${year}-${month}-${date}`;
+        }
+
+        // 控制表單折疊
+        function openAddForm() {
+            document.getElementById('foodFormContainer').classList.remove('hidden');
+            document.getElementById('formTitle').innerText = '🆕 新增保鮮食材';
+            document.getElementById('foodName').search = ''; // reset
+            document.getElementById('editItemId').value = '';
+            document.getElementById('foodForm').reset();
+            document.getElementById('foodExpiry').value = getOffsetDateString(7);
+            document.getElementById('foodName').focus();
+            
+            // 平滑滾動到這個區塊
+            document.getElementById('foodFormContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function closeFoodForm() {
+            document.getElementById('foodFormContainer').classList.add('hidden');
+            document.getElementById('foodForm').reset();
+        }
+
+        // 庫存多寡變量
+        function changeStockQty(id, delta) {
+            const food = state.foods.find(f => f.id === id);
+            if (food) {
+                const newVal = food.qty + delta;
+                if (newVal <= 0) {
+                    if (confirm(`確定已將「${food.name}」完全消耗並移除嗎？\n\n(小提示：移除後您可在購物清單中重新補上他喔)`)) {
+                        deleteFood(id);
+                    }
+                } else {
+                    food.qty = newVal;
+                    saveStateToLocal('fridge_foods', state.foods);
+                    renderFoodList();
+                }
+            }
+        }
+
+        // 新增與編輯保存食材實體方法
+        function saveFoodItem(e) {
+            e.preventDefault();
+            const idInput = document.getElementById('editItemId').value;
+            const name = document.getElementById('foodName').value.trim();
+            const category = document.getElementById('foodCategory').value;
+            const qty = parseInt(document.getElementById('foodQty').value) || 1;
+            const expiry = document.getElementById('foodExpiry').value;
+
+            if (!name || !expiry) return;
+
+            if (idInput) {
+                // 編輯保存項目
+                state.foods = state.foods.map(food => {
+                    if (food.id === idInput) {
+                        return { ...food, name, category, qty, expiry };
+                    }
+                    return food;
+                });
+            } else {
+                // 新增項目
+                const newFood = {
+                    id: String(Date.now()),
+                    name,
+                    category,
+                    qty,
+                    expiry
+                };
+                state.foods.push(newFood);
+            }
+
+            // 儲存至本地
+            saveStateToLocal('fridge_foods', state.foods);
+            
+            // 列表重繪
+            renderFoodList();
+            
+            // 關閉表單
+            closeFoodForm();
+        }
+
+        // 點擊開始編輯
+        function startEditFood(id) {
+            const food = state.foods.find(f => f.id === id);
+            if (!food) return;
+
+            document.getElementById('foodFormContainer').classList.remove('hidden');
+            document.getElementById('formTitle').innerText = '編輯冰箱食材';
+            
+            document.getElementById('editItemId').value = food.id;
+            document.getElementById('foodName').value = food.name;
+            document.getElementById('foodCategory').value = food.category;
+            document.getElementById('foodQty').value = food.qty;
+            document.getElementById('foodExpiry').value = food.expiry;
+
+            // 滾動焦點
+            document.getElementById('foodFormContainer').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        // 刪除保存食材方法
+        function deleteFood(id) {
+            state.foods = state.foods.filter(f => f.id !== id);
+            saveStateToLocal('fridge_foods', state.foods);
+            renderFoodList();
+        }
+
+        function clearSearch() {
+            document.getElementById('foodSearch').value = '';
+            renderFoodList();
+        }
+
+        // ==================== 6. 頁籤導航切換核心邏輯 ====================
+        
+        function switchMainTab(tabName) {
+            const btnStock = document.getElementById('tabButtonStock');
+            const btnTimer = document.getElementById('tabButtonTimer');
+            const contentStock = document.getElementById('tabContentStock');
+            const contentTimer = document.getElementById('tabContentTimer');
+            
+            if (tabName === 'stock') {
+                // Activate Stock
+                btnStock.className = "flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-cardDark text-accentBlue border border-borderDark select-none touch-target";
+                btnTimer.className = "flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer text-slate-400 hover:text-white select-none touch-target";
+                
+                contentStock.classList.remove('hidden');
+                contentTimer.classList.add('hidden');
+            } else {
+                // Activate Timer
+                btnTimer.className = "flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer bg-cardDark text-accentBlue border border-borderDark select-none touch-target";
+                btnStock.className = "flex-1 py-4 text-center font-bold text-lg rounded-xl flex items-center justify-center gap-2 transition cursor-pointer text-slate-400 hover:text-white select-none touch-target";
+                
+                contentTimer.classList.remove('hidden');
+                contentStock.classList.add('hidden');
+            }
+        }
+
+        // ==================== 7. 家人溫馨留言板核心邏輯 (Column 3) ====================
+        
+        // 渲染留言
+        function renderMemos() {
+            const mContainer = document.getElementById('memoContainer');
+            
+            if (state.memos.length === 0) {
+                document.getElementById('emptyMemoMsg').classList.remove('hidden');
+                mContainer.innerHTML = '';
+                return;
+            } else {
+                document.getElementById('emptyMemoMsg').classList.add('hidden');
+            }
+
+            // 各種便利貼專屬顏色
+            const colorClasses = {
+                'pink': 'bg-[#B2A4D4] text-slate-900 border-[#B2A4D4]/85 shadow-[#B2A4D4]/10',
+                'yellow': 'bg-[#FFEEAD] text-slate-100/90 hover:text-slate-900 border-[#FFEEAD]/80 shadow-[#FFEEAD]/10 text-slate-900',
+                'teal': 'bg-[#96CEB4] text-slate-100/90 hover:text-slate-900 border-[#96CEB4]/80 shadow-[#96CEB4]/10 text-slate-900',
+                'blue': 'bg-[#CEE4FE] text-slate-900 border-[#CEE4FE]/80 shadow-[#CEE4FE]/10'
+            };
+
+            mContainer.innerHTML = state.memos.map((memo, idx) => {
+                const colorClass = colorClasses[memo.color] || colorClasses.yellow;
+                
+                return `
+                    <div class="sticky-note ${colorClass} p-3 rounded-lg border shadow-lg relative flex flex-col justify-between min-h-[90px] select-text">
+                        <!-- 刪除留言按鈕 -->
+                        <button onclick="deleteMemo('${memo.id}')" title="撕掉備忘" class="absolute top-1 right-2 w-5 h-5 flex items-center justify-center text-slate-800 hover:text-black hover:font-bold text-xs select-none">
+                            ✕
+                        </button>
+                        
+                        <!-- 留言內容 (支援雙擊或點擊直接就地編輯) -->
+                        <div class="pr-3 text-xs leading-relaxed font-sans font-semibold text-slate-900" 
+                             contenteditable="true" 
+                             onblur="editMemoText('${memo.id}', this)"
+                             title="點擊直接修改內容">
+                            ${memo.text}
+                        </div>
+                        
+                        <!-- 留言小狀態 -->
+                        <div class="text-[10px] text-slate-600/80 text-right mt-2 font-mono select-none">
+                            時間: ${memo.date}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 新增留言
+        function addMemo(color) {
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+            
+            const newMemo = {
+                id: 'm' + Date.now(),
+                text: "點擊此處輸入備忘...",
+                color: color,
+                date: timeStr
+            };
+
+            state.memos.push(newMemo);
+            saveStateToLocal('fridge_memos', state.memos);
+            renderMemos();
+        }
+
+        // 就地保存編輯的留言文字
+        function editMemoText(id, element) {
+            const newText = element.innerText.trim();
+            if(!newText) {
+                deleteMemo(id);
+                return;
+            }
+            state.memos = state.memos.map(m => {
+                if (m.id === id) {
+                    return { ...m, text: newText };
+                }
+                return m;
+            });
+            saveStateToLocal('fridge_memos', state.memos);
+        }
+
+        // 撕掉留言
+        function deleteMemo(id) {
+            state.memos = state.memos.filter(m => m.id !== id);
+            saveStateToLocal('fridge_memos', state.memos);
+            renderMemos();
+        }
+
+
+        // ==================== 8. 料理計時器與線路音效控制 (Column 3) ====================
+        
+        // 格式化秒數為分：秒
+        function formatSeconds(sec) {
+            const m = String(Math.floor(sec / 60)).padStart(2, '0');
+            const s = String(sec % 60).padStart(2, '0');
+            return `${m}:${s}`;
+        }
+
+        // 點擊快捷設定料理預算計時器
+        function setTimerPreset(minutes) {
+            if (state.timer.isRunning) {
+                clearInterval(state.timer.intervalId);
+                state.timer.isRunning = false;
+            }
+            state.timer.totalSeconds = minutes * 60;
+            state.timer.remainingSeconds = minutes * 60;
+            updateTimerDisplay();
+        }
+
+        // 秒數微調增減 (增量可為正負值)
+        function adjustTimerSeconds(offsetSeconds) {
+            let newVal = state.timer.remainingSeconds + offsetSeconds;
+            if (newVal < 0) newVal = 0;
+            // 如果是在倒數中，更新它的 total
+            state.timer.remainingSeconds = newVal;
+            if(!state.timer.isRunning) {
+                state.timer.totalSeconds = newVal;
+            }
+            updateTimerDisplay();
+        }
+
+        // 更新計時文字
+        function updateTimerDisplay() {
+            const displayEl = document.getElementById('timerDisplay');
+            displayEl.innerText = formatSeconds(state.timer.remainingSeconds);
+            
+            // 當計時剩低於 1 0 秒時變紅色提醒
+            if (state.timer.remainingSeconds < 10 && state.timer.remainingSeconds > 0) {
+                displayEl.classList.remove('text-accentBlue');
+                displayEl.classList.add('text-statusRed', 'animate-pulse');
+            } else {
+                displayEl.classList.add('text-accentBlue');
+                displayEl.classList.remove('text-statusRed', 'animate-pulse');
+            }
+
+            // 更新控制鈕
+            const btnText = document.getElementById('timerControlText');
+            const btnIcon = document.getElementById('timerControlIcon');
+            const btn = document.getElementById('timerControlBtn');
+
+            if (state.timer.isRunning) {
+                btnText.innerText = "暫停倒數";
+                btnIcon.innerHTML = `<svg class="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+                btn.classList.replace('bg-statusGreen', 'bg-yellow-600');
+                btn.classList.replace('hover:bg-emerald-600', 'hover:bg-yellow-500');
+            } else {
+                btnText.innerText = "開始倒數";
+                btnIcon.innerHTML = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+                btn.classList.replace('bg-yellow-600', 'bg-statusGreen');
+                btn.classList.replace('hover:bg-yellow-500', 'hover:bg-emerald-600');
+            }
+        }
+
+        // 計時器切換開關 (開始/暫停)
+        function toggleTimer() {
+            if (state.timer.remainingSeconds <= 0) {
+                alert('請先點選快捷預設或點按旁邊的分秒加強鍵增加倒數時間！');
+                return;
+            }
+
+            if (state.timer.isRunning) {
+                // 暫停跑表
+                clearInterval(state.timer.intervalId);
+                state.timer.isRunning = false;
+                updateTimerDisplay();
+            } else {
+                // 啟動跑表倒數
+                state.timer.isRunning = true;
+                updateTimerDisplay();
+
+                state.timer.intervalId = setInterval(() => {
+                    state.timer.remainingSeconds--;
+                    updateTimerDisplay();
+
+                    if (state.timer.remainingSeconds <= 0) {
+                        clearInterval(state.timer.intervalId);
+                        state.timer.isRunning = false;
+                        triggerTimerFinished();
+                    }
+                }, 1000);
+            }
+        }
+
+        // 重設計時器到原始所設
+        function resetTimer() {
+            clearInterval(state.timer.intervalId);
+            state.timer.isRunning = false;
+            state.timer.remainingSeconds = state.timer.totalSeconds;
+            updateTimerDisplay();
+        }
+
+        // 倒數結束響應機制：彈出全螢幕遮罩，同時合成「警報聲」
+        let audioBeepInterval = null;
+        function triggerTimerFinished() {
+            // 秀出全螢幕遮罩
+            document.getElementById('fullScreenAlert').classList.remove('hidden');
+
+            // 每隔 1 秒主動合成一次報警音
+            testBeepSound();
+            audioBeepInterval = setInterval(() => {
+                testBeepSound();
+            }, 1000);
+        }
+
+        // 關閉全畫面計時器警告
+        function stopTimerAlert() {
+            document.getElementById('fullScreenAlert').classList.add('hidden');
+            if (audioBeepInterval) {
+                clearInterval(audioBeepInterval);
+                audioBeepInterval = null;
+            }
+            resetTimer();
+        }
+
+        // 完全離線式 Web Audio API 警報聲音效合成器 (零載入負擔)
+        function testBeepSound() {
+            try {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtxClass) return;
+                
+                const audioCtx = new AudioCtxClass();
+                // 建立震盪與增益模組
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.type = 'triangle'; // 三角波，聲音比正弦波更清脆適合廚房
+                osc.frequency.setValueAtTime(987.77, audioCtx.currentTime); // B5音調高頻清爽
+                
+                gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                // 聲音緩緩遞減
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.45);
+            } catch (error) {
+                console.error("目前瀏覽器拒絕或無法在未經觸控時合成聲波：", error);
+            }
+        }
+    </script>
+</body>
+</html>
