@@ -1699,12 +1699,33 @@
 
             // 讀取本地儲存的金鑰並解密
             const encryptedKey = localStorage.getItem('gemini_api_key');
-            const apiKey = decryptKey(encryptedKey);
+            let apiKey = '';
+            
+            try {
+                apiKey = decryptKey(encryptedKey);
+            } catch (e) {
+                alert('⚠️ 金鑰解密失敗，可能是先前舊版快取衝突。請在頂部導航欄重新貼上您的 API 金鑰並點擊「儲存」。');
+                loadingOverlay.classList.add('hidden');
+                captureBtn.disabled = false;
+                statusMsg.innerText = '錯誤：金鑰解析失敗';
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+                return;
+            }
+
             if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY' || !apiKey.trim()) {
                 alert('請先在頂部導航欄輸入您的 Gemini API 金鑰！');
                 loadingOverlay.classList.add('hidden');
                 captureBtn.disabled = false;
                 statusMsg.innerText = '錯誤：未設定 API 金鑰';
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+                return;
+            }
+
+            if (!apiKey.startsWith('AIzaSy')) {
+                alert('⚠️ 偵測到金鑰格式不正確（應以 AIzaSy 開頭）。\n\n這可能是因為舊版快取衝突所致，請在網頁最上方重新貼上您的金鑰，並點選「儲存」按鈕！');
+                loadingOverlay.classList.add('hidden');
+                captureBtn.disabled = false;
+                statusMsg.innerText = '錯誤：金鑰格式錯誤';
                 statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
                 return;
             }
@@ -1842,6 +1863,9 @@ Guidelines:
                 captureBtn.disabled = false;
                 statusMsg.innerText = `分析失敗: ${err.message}`;
                 statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+                
+                // 顯示大警告框以提供詳細除錯訊息
+                alert(`❌ 食材辨識分析失敗！\n\n【錯誤詳細原因】\n${err.message}\n\n【排查建議】\n1. 請確認最上方欄位的「API 金鑰」正確，並已按過「儲存」（看到綠色已儲存標記）。\n2. 檢查目前網路是否連通。\n3. 如果是金鑰貼錯或毀損，請重新在最上方貼上新的金鑰並按儲存。`);
             }
         }
 
