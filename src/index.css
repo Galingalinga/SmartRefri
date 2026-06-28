@@ -1,1 +1,18 @@
 @import "tailwindcss";
+@source "../index.html";
+
+@theme {
+  --color-fridgeDark: rgba(15, 12, 28, 0.72);
+  --color-cardDark: rgba(25, 23, 43, 0.82);
+  --color-borderDark: rgba(164, 174, 212, 0.22);
+  --color-accentBlue: #B2A4D4;
+  --color-accentLavender: #B2A4D4;
+  --color-accentPeriwinkle: #A4AED4;
+  --color-accentIceBlue: #CEE4FE;
+  --color-statusGreen: #82C39B;
+  --color-statusYellow: #E4BE75;
+  --color-statusRed: #E58A8A;
+  
+  --font-sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: Courier New, Courier, monospace;
+}

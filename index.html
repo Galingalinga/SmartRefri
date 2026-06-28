@@ -51,6 +51,16 @@
             background: #B2A4D4;
         }
 
+        html {
+            font-size: 110%;
+        }
+
+        @media (min-width: 640px) {
+            html {
+                font-size: 125%; /* 全站字體放大 2 級 */
+            }
+        }
+
         body {
             background-color: #070610;
             color: #E2E4E9;
@@ -358,6 +368,106 @@
         </button>
     </div>
 
+    <!-- 相機辨識彈窗 (適配舊平板，玻璃擬態設計) -->
+    <div id="cameraModal"
+        class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="bg-cardDark border border-borderDark rounded-2xl p-5 max-w-lg w-full shadow-2xl relative">
+            <!-- 關閉按鈕 -->
+            <button onclick="closeCameraModal()"
+                class="absolute top-3 right-3 text-slate-400 hover:text-white text-xl p-1.5 touch-target select-none">
+                ✕
+            </button>
+            <h3 class="text-lg font-bold text-accentBlue mb-3 flex items-center gap-1.5 select-none">
+                📸 相機食材智慧辨識
+            </h3>
+            
+            <!-- 鏡頭預覽區域 -->
+            <div class="relative w-full aspect-video bg-black/90 border border-borderDark rounded-xl overflow-hidden mb-4 flex items-center justify-center">
+                <video id="cameraVideo" autoplay playsinline class="w-full h-full object-cover"></video>
+                <canvas id="cameraCanvas" class="hidden"></canvas>
+                <!-- 載入中遮罩 -->
+                <div id="cameraLoadingOverlay" class="hidden absolute inset-0 bg-fridgeDark/90 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                    <div class="w-12 h-12 border-4 border-accentBlue border-t-transparent rounded-full animate-spin mb-4"></div>
+                    <p id="cameraLoadingText" class="text-sm font-bold text-white tracking-wider">正在分析圖片，請稍候...</p>
+                </div>
+            </div>
+
+            <!-- 操作按鈕組 -->
+            <div class="flex flex-col gap-2.5">
+                <button onclick="captureAndRecognize()" id="captureBtn"
+                    class="w-full bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold py-3.5 px-6 rounded-xl text-base shadow active:scale-95 transition-all touch-target select-none">
+                    拍照並送出辨識
+                </button>
+                
+                <!-- 舊型設備檔案上傳 Fallback 區域 -->
+                <div class="border-t border-borderDark/40 pt-3 mt-1 flex flex-col items-center gap-2">
+                    <span class="text-xs text-slate-400">若相機無法正常開啟，可點按下方選取照片：</span>
+                    <button onclick="triggerFileInput()"
+                        class="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-semibold px-6 py-2.5 rounded-xl text-sm active:scale-95 transition touch-target w-full select-none">
+                        📷 選擇圖片檔案 (支援拍照)
+                    </button>
+                    <input type="file" id="cameraFileInput" accept="image/*" capture="user" class="hidden" onchange="handleFileSelect(event)">
+                </div>
+            </div>
+            
+            <p id="cameraStatusMsg" class="text-center text-xs text-slate-400 mt-3 min-h-[1rem]"></p>
+        </div>
+    </div>
+
+    <!-- 每天五點即期/過期食材提醒彈窗 -->
+    <div id="expiryNotificationModal"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+        <div class="bg-cardDark border border-borderDark rounded-2xl p-6 max-w-md w-full shadow-2xl relative">
+            <div class="bg-statusYellow/10 text-statusYellow w-14 h-14 rounded-full flex items-center justify-center border border-statusYellow/20 mb-4 mx-auto animate-bounce">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-bold text-center text-white mb-2 tracking-wide">⚠️ 即期食材溫馨提醒</h3>
+            <div id="expiryNotificationContent" class="text-slate-200 text-sm leading-relaxed mb-6 whitespace-pre-line text-center">
+                <!-- 動態填入提醒文字 -->
+            </div>
+            <div class="flex justify-center">
+                <button onclick="closeExpiryNotification()"
+                    class="bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold px-8 py-3 rounded-xl shadow-lg active:scale-95 transition-all touch-target">
+                    我知道了，已確認
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI 辨識食材確認/修改彈窗 (無狀態架構之確認機制) -->
+    <div id="recognitionConfirmModal"
+        class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="bg-cardDark border border-borderDark rounded-2xl p-6 max-w-xl w-full shadow-2xl relative flex flex-col max-h-[90vh]">
+            <h3 class="text-xl font-bold text-accentBlue mb-2 flex items-center gap-1.5 select-none">
+                🔍 確認 AI 辨識結果
+            </h3>
+            <p class="text-xs text-slate-400 mb-4 select-none">請確認辨識出的食材是否正確。若有誤差，可點擊「修改內容」進行校正。</p>
+            
+            <!-- 食材清單顯示/修改區域 -->
+            <div id="confirmListContainer" class="flex-grow overflow-y-auto border border-borderDark rounded-xl bg-fridgeDark/60 p-4 mb-5 max-h-[50vh]">
+                <!-- JS 動態注入內容，支援唯讀列表與修改表單切換 -->
+            </div>
+
+            <!-- 控制按鈕 -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-center items-center pt-3 border-t border-borderDark/30 w-full">
+                <button onclick="toggleConfirmEdit()" id="confirmEditBtn"
+                    class="w-full sm:w-auto bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 font-bold px-8 py-3.5 rounded-xl text-base select-none active:scale-95 transition-all touch-target">
+                    修改內容
+                </button>
+                <button onclick="cancelConfirmModal()"
+                    class="w-full sm:w-auto bg-red-950/20 hover:bg-red-900/40 border border-statusRed/30 text-statusRed font-bold px-8 py-3.5 rounded-xl text-base select-none active:scale-95 transition-all touch-target">
+                    取消新增
+                </button>
+                <button onclick="saveAndMergeConfirmed()" id="confirmSubmitBtn"
+                    class="w-full sm:w-auto bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold px-10 py-3.5 rounded-xl text-base select-none active:scale-95 transition-all touch-target">
+                    確認新增
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- 頂部導航儀表板與系統資訊列 -->
     <header id="header-bar"
         class="bg-cardDark/80 backdrop-blur-md border-b border-borderDark px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-40 shadow-md">
@@ -412,14 +522,24 @@
                     <h2 class="text-xl font-bold flex items-center gap-2 text-white">
                         食材保鮮庫庫存
                     </h2>
-                    <button onclick="openAddForm()"
-                        class="bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 shadow active:scale-95 transition-all touch-target font-bold">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
-                            </path>
-                        </svg>
-                        新增食材
-                    </button>
+                    <div class="flex gap-2">
+                        <button onclick="openCameraModal()"
+                            class="bg-accentPeriwinkle hover:bg-[#CEE4FE] text-fridgeDark font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 shadow active:scale-95 transition-all touch-target font-bold">
+                            <svg class="w-4.5 h-4.5 text-fridgeDark" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            相機辨識
+                        </button>
+                        <button onclick="openAddForm()"
+                            class="bg-accentBlue hover:bg-[#CEE4FE] hover:text-[#0A0713] text-fridgeDark font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 shadow active:scale-95 transition-all touch-target font-bold">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4">
+                                </path>
+                            </svg>
+                            新增食材
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 保鮮狀態一覽統計指標 (點擊可快速過濾) -->
@@ -587,16 +707,16 @@
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6 w-full">
                         <button onclick="setTimerPreset(3)"
                             class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">3分
-                            水煮蛋</button>
-                        <button onclick="setTimerPreset(5)"
-                            class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">5分
                             泡麵</button>
+                        <button onclick="setTimerPreset(6)"
+                            class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">6分
+                            溏心蛋</button>
+                        <button onclick="setTimerPreset(8)"
+                            class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">8分
+                            溫泉蛋</button>
                         <button onclick="setTimerPreset(10)"
                             class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">10分
-                            蒸魚</button>
-                        <button onclick="setTimerPreset(15)"
-                            class="text-sm bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-100 py-3 rounded-xl font-semibold select-none active:scale-95 transition">15分
-                            水餃</button>
+                            全熟蛋</button>
                     </div>
 
                     <!-- 分秒手動微調大按鈕 (方便廚師大叔點按) -->
@@ -766,6 +886,9 @@
 
             // 設定預設食材新增表單中的今日日期
             document.getElementById('foodExpiry').value = getOffsetDateString(7);
+
+            // 啟動時檢查是否需要顯示每日過期食材推播
+            checkDailyExpiryNotification();
         });
 
         // 本地儲存資料安全讀取輔助
@@ -809,6 +932,11 @@
 
                 document.getElementById('panelTime').innerText = timeString;
                 document.getElementById('panelDate').innerText = dateString;
+
+                // 每分鐘檢查一次每日即期提醒 (當秒數為 00 時)
+                if (ss === '00') {
+                    checkDailyExpiryNotification();
+                }
             }
 
             updateClockTime();
@@ -1495,6 +1623,417 @@
                 };
                 img.src = dataUrl;
             }
+        }
+
+        // ==================== 10. 相機辨識與無狀態 API 控制 ====================
+        let cameraStream = null;
+
+        // 開啟相機彈窗並啟動視訊串流
+        async function openCameraModal() {
+            const modal = document.getElementById('cameraModal');
+            const video = document.getElementById('cameraVideo');
+            const statusMsg = document.getElementById('cameraStatusMsg');
+            
+            modal.classList.remove('hidden');
+            statusMsg.innerText = "正在啟動相機...";
+            statusMsg.className = "text-center text-xs text-slate-400 mt-3 min-h-[1rem]";
+
+            // 確保每次開啟都隱藏載入遮罩，並重設按鈕
+            document.getElementById('cameraLoadingOverlay').classList.add('hidden');
+            document.getElementById('captureBtn').disabled = false;
+
+            try {
+                // 適配舊平板：優先調用前鏡頭 (facingMode: 'user')
+                const constraints = {
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
+                    audio: false
+                };
+                
+                cameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+                video.srcObject = cameraStream;
+                statusMsg.innerText = "相機已啟動，請將食材置於鏡頭前拍照。";
+            } catch (err) {
+                console.error("啟動相機失敗：", err);
+                statusMsg.innerText = "無法開啟前鏡頭 (權限受限或無可用裝置)，已自動切換為檔案選取/相機拍攝模式。";
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+                
+                // 停用 video 顯示
+                video.srcObject = null;
+            }
+        }
+
+        // 關閉相機彈窗並停止視訊串流
+        function closeCameraModal() {
+            const modal = document.getElementById('cameraModal');
+            modal.classList.add('hidden');
+
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            
+            const video = document.getElementById('cameraVideo');
+            video.srcObject = null;
+        }
+
+        // 觸發隱藏的檔案選擇器
+        function triggerFileInput() {
+            document.getElementById('cameraFileInput').click();
+        }
+
+        // 處理使用者選取檔案 / 系統相機拍照上傳
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // 使用選取之圖片 Base64 進行辨識
+                const base64Image = e.target.result;
+                sendImageToGemini(base64Image);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 擷取目前視訊畫面並上傳至後端辨識
+        function captureAndRecognize() {
+            const video = document.getElementById('cameraVideo');
+            const canvas = document.getElementById('cameraCanvas');
+            const statusMsg = document.getElementById('cameraStatusMsg');
+
+            // 檢查視訊是否處於播放狀態
+            if (!cameraStream || video.paused || video.ended) {
+                statusMsg.innerText = "相機未啟動或無串流畫面，請使用下方選擇圖片檔案。";
+                statusMsg.className = "text-center text-xs text-statusYellow mt-3 min-h-[1rem]";
+                return;
+            }
+
+            try {
+                // 將視訊畫面繪製到 canvas，解析度控制在 640x480 以適配效能與頻寬
+                canvas.width = 640;
+                canvas.height = 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                // 轉為低品質 JPEG base64 (0.6 壓縮率)
+                const base64Image = canvas.toDataURL('image/jpeg', 0.6);
+                sendImageToGemini(base64Image);
+            } catch (err) {
+                console.error("擷取畫面失敗：", err);
+                statusMsg.innerText = "擷取畫面失敗，請改用檔案選取。";
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+            }
+        }
+
+        // 發送 Base64 圖片至 Express 後端 API 呼叫 Gemini
+        async function sendImageToGemini(base64Image) {
+            const loadingOverlay = document.getElementById('cameraLoadingOverlay');
+            const loadingText = document.getElementById('cameraLoadingText');
+            const captureBtn = document.getElementById('captureBtn');
+            const statusMsg = document.getElementById('cameraStatusMsg');
+
+            // 顯示載入遮罩並鎖定按鈕
+            loadingOverlay.classList.remove('hidden');
+            loadingText.innerText = "正在傳送照片給 Gemini 分析中，請稍候...";
+            captureBtn.disabled = true;
+            statusMsg.innerText = "正在進行食材辨識與庫存合併...";
+            statusMsg.className = "text-center text-xs text-accentBlue mt-3 min-h-[1rem]";
+
+            try {
+                // 無狀態傳輸：連同當前 localStorage 庫存一併送給後端
+                const requestPayload = {
+                    image: base64Image,
+                    currentInventory: state.foods
+                };
+
+                const response = await fetch('/api/recognize', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestPayload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`伺服器回應錯誤 (狀態碼 ${response.status})`);
+                }
+
+                const data = await response.json();
+                if (data.success && data.foods) {
+                    // 隱藏後台分析遮罩，關閉相機鏡頭以省電
+                    loadingOverlay.classList.add('hidden');
+                    closeCameraModal();
+
+                    // 將辨識結果載入暫存變數中，並顯示確認彈窗
+                    tempDetectedFoods = data.foods;
+                    isConfirmEditing = false;
+                    showRecognitionConfirmModal();
+                } else {
+                    throw new Error(data.error || '辨識結果無效');
+                }
+            } catch (err) {
+                console.error("食材分析失敗：", err);
+                loadingOverlay.classList.add('hidden');
+                captureBtn.disabled = false;
+                statusMsg.innerText = `分析失敗: ${err.message}`;
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+            }
+        }
+
+        // ==================== 11. 每日 5 點自動推播快過期食材機制 ====================
+
+        // 檢查是否需要彈出每日即期食材提醒
+        function checkDailyExpiryNotification() {
+            const now = new Date();
+            const hours = now.getHours();
+
+            // 只在下午 5 點 (17 點) 或之後進行檢查
+            if (hours >= 17) {
+                const todayStr = getOffsetDateString(0);
+                const lastNotified = localStorage.getItem('last_expiry_notification_date');
+
+                // 如果今天尚未推播過
+                if (lastNotified !== todayStr) {
+                    // 掃描冰箱庫存，找出「明天過期」的品項
+                    const tomorrowStr = getOffsetDateString(1);
+                    const expiringTomorrow = state.foods.filter(food => food.expiry === tomorrowStr);
+
+                    if (expiringTomorrow.length > 0) {
+                        // 整理成溫馨提示文字，包含名稱、數量與過期日
+                        let listContent = "";
+                        expiringTomorrow.forEach(food => {
+                            listContent += `• [${food.category}] ${food.name} 有 ${food.qty} 件 (明天到期)\n`;
+                        });
+
+                        const message = `晚安！冰箱裡有食材即將在明天過期喔！\n\n${listContent}\n請記得儘快料理食用以保持新鮮！`;
+                        
+                        // 填入提示框並開啟彈窗
+                        document.getElementById('expiryNotificationContent').innerText = message;
+                        document.getElementById('expiryNotificationModal').classList.remove('hidden');
+                    } else {
+                        // 若無即期食材，則今天直接標記已檢查完畢，避免反覆進行無謂的掃描
+                        localStorage.setItem('last_expiry_notification_date', todayStr);
+                    }
+                }
+            }
+        }
+
+        // 關閉即期提醒彈窗，並在 localStorage 寫入今日已確認標記
+        function closeExpiryNotification() {
+            document.getElementById('expiryNotificationModal').classList.add('hidden');
+            const todayStr = getOffsetDateString(0);
+            localStorage.setItem('last_expiry_notification_date', todayStr);
+        }
+
+        // ==================== 12. AI 辨識確認與編輯修改控制邏輯 ====================
+        
+        // 臨時存放 AI 辨識出的食材清單
+        let tempDetectedFoods = [];
+        let isConfirmEditing = false; // 控制確認彈窗內是唯讀模式還是編輯模式
+
+        // 顯示辨識確認彈窗
+        function showRecognitionConfirmModal() {
+            const modal = document.getElementById('recognitionConfirmModal');
+            modal.classList.remove('hidden');
+            renderConfirmList();
+        }
+
+        // 渲染確認清單 (唯讀模式 / 編輯模式)
+        function renderConfirmList() {
+            const container = document.getElementById('confirmListContainer');
+            const editBtn = document.getElementById('confirmEditBtn');
+            
+            if (tempDetectedFoods.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500 text-center py-8">AI 未辨識出任何食材，請點選取消或點擊下方按鈕手動新增。</p>
+                <div class="flex justify-center mt-2">
+                    <button onclick="addTempItemPlaceholder()" class="bg-slate-800 border border-slate-700 hover:border-accentBlue text-slate-200 px-4 py-2 rounded-xl text-xs font-semibold select-none active:scale-95 transition">
+                        ＋ 手動新增一項
+                    </button>
+                </div>`;
+                return;
+            }
+
+            if (!isConfirmEditing) {
+                // 1. 唯讀確認狀態
+                editBtn.innerText = "修改內容";
+                container.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="text-xs text-accentBlue font-bold border-b border-borderDark/40 pb-1.5 mb-2 flex justify-between select-none">
+                            <span>已識別食材名稱與數量</span>
+                            <span>分類與保存期限</span>
+                        </div>
+                        <ul class="divide-y divide-borderDark/30">
+                            ${tempDetectedFoods.map((item, idx) => `
+                                <li class="py-3 flex items-center justify-between text-sm">
+                                    <div class="flex items-center gap-2">
+                                        <span class="w-6 h-6 rounded-full bg-slate-800 text-xs font-bold text-accentBlue flex items-center justify-center select-none">${idx + 1}</span>
+                                        <span class="font-bold text-white tracking-wide">${item.name}</span>
+                                        <span class="text-xs text-yellow-400 font-mono font-bold bg-yellow-950/20 px-1.5 py-0.5 rounded border border-yellow-800/30">x${item.qty}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs">
+                                        <span class="bg-slate-850 text-slate-300 px-2 py-0.5 rounded border border-slate-700/50">${item.category}</span>
+                                        <span class="text-slate-400 font-mono font-semibold">${item.expiry}</span>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>
+                `;
+            } else {
+                // 2. 編輯修改狀態
+                editBtn.innerText = "取消修改";
+                container.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="text-xs text-accentBlue font-bold border-b border-borderDark/40 pb-1.5 mb-2 select-none">
+                            請直接修改下方食材資訊，或點擊移除不需要的項目：
+                        </div>
+                        <ul class="space-y-4">
+                            ${tempDetectedFoods.map((item, idx) => `
+                                <li class="p-4 bg-slate-850/60 border border-borderDark/30 rounded-xl space-y-3 relative">
+                                    <div class="flex items-center justify-between border-b border-borderDark/20 pb-2 mb-2 select-none">
+                                        <span class="text-xs font-bold text-accentBlue">項目 ${idx + 1}</span>
+                                        <button onclick="removeTempItem(${idx})" class="text-xs text-statusRed hover:underline flex items-center gap-0.5">
+                                            🗑️ 移除此項
+                                        </button>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400 mb-1 select-none">食材名稱</label>
+                                            <input type="text" value="${item.name}" onchange="updateTempItem(${idx}, 'name', this.value)" 
+                                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-accentBlue">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400 mb-1 select-none">存放位置</label>
+                                            <select onchange="updateTempItem(${idx}, 'category', this.value)"
+                                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-accentBlue">
+                                                <option value="冷藏室" ${item.category === '冷藏室' ? 'selected' : ''}>冷藏室</option>
+                                                <option value="冷凍庫" ${item.category === '冷凍庫' ? 'selected' : ''}>冷凍庫</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400 mb-1 select-none">庫存數量</label>
+                                            <input type="number" min="1" value="${item.qty}" onchange="updateTempItem(${idx}, 'qty', parseInt(this.value) || 1)"
+                                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-xs text-white focus:outline-none focus:border-accentBlue">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] text-slate-400 mb-1 select-none">有限期限 (過期日)</label>
+                                            <input type="date" value="${item.expiry}" onchange="updateTempItem(${idx}, 'expiry', this.value)"
+                                                class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-accentBlue font-sans">
+                                        </div>
+                                    </div>
+                                </li>
+                            `).join('')}
+                        </ul>
+                        <button onclick="addTempItemPlaceholder()" 
+                            class="w-full border border-dashed border-accentBlue/30 hover:border-accentBlue text-accentBlue hover:bg-accentBlue/10 py-3 rounded-xl text-xs font-bold transition select-none active:scale-99">
+                            ＋ 新增一項自訂食材
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        // 修改暫存項目欄位
+        function updateTempItem(index, field, value) {
+            if (tempDetectedFoods[index]) {
+                tempDetectedFoods[index][field] = value;
+            }
+        }
+
+        // 移除暫存項目
+        function removeTempItem(index) {
+            tempDetectedFoods.splice(index, 1);
+            renderConfirmList();
+        }
+
+        // 手動新增一項 placeholder 食材以供輸入
+        function addTempItemPlaceholder() {
+            tempDetectedFoods.push({
+                name: "手動輸入食材名稱",
+                category: "冷藏室",
+                qty: 1,
+                expiry: getOffsetDateString(7)
+            });
+            renderConfirmList();
+        }
+
+        // 切換唯讀確認與編輯修改模式
+        function toggleConfirmEdit() {
+            isConfirmEditing = !isConfirmEditing;
+            renderConfirmList();
+        }
+
+        // 取消新增食材，直接關閉彈窗
+        function cancelConfirmModal() {
+            if (confirm("確定要放棄這次 AI 辨識的所有食材嗎？")) {
+                const modal = document.getElementById('recognitionConfirmModal');
+                modal.classList.add('hidden');
+                tempDetectedFoods = [];
+            }
+        }
+
+        // 確認並將食材正式寫入庫存 (Stateless Merge)
+        function saveAndMergeConfirmed() {
+            if (tempDetectedFoods.length === 0) {
+                alert("目前無任何待新增食材！");
+                return;
+            }
+
+            // 驗證是否有空白品項
+            for (let i = 0; i < tempDetectedFoods.length; i++) {
+                if (!tempDetectedFoods[i].name.trim()) {
+                    alert(`項目 ${i+1} 的品名不可為空白！`);
+                    return;
+                }
+                if (!tempDetectedFoods[i].expiry) {
+                    alert(`項目 ${i+1} 的有效期限不可為空白！`);
+                    return;
+                }
+            }
+
+            // 執行 Client 端的合併與寫入
+            tempDetectedFoods.forEach(newItem => {
+                // 檢查是否有名稱、位置、期限完全一致的既有食品
+                const existing = state.foods.find(f => 
+                    f.name.trim() === newItem.name.trim() && 
+                    f.category === newItem.category && 
+                    f.expiry === newItem.expiry
+                );
+
+                if (existing) {
+                    // 若存在，則累加數量
+                    existing.qty += newItem.qty;
+                } else {
+                    // 若不存在，則作為獨立新食品加入
+                    state.foods.push({
+                        id: String(Date.now() + Math.random()), // 隨機唯一 ID
+                        name: newItem.name.trim(),
+                        category: newItem.category,
+                        qty: newItem.qty,
+                        expiry: newItem.expiry
+                    });
+                }
+            });
+
+            // 儲存至本地 localStorage
+            saveStateToLocal('fridge_foods', state.foods);
+            
+            // 重新繪製食材庫存清單與統計計數器
+            renderFoodList();
+
+            // 關閉彈窗並清空暫存
+            const modal = document.getElementById('recognitionConfirmModal');
+            modal.classList.add('hidden');
+            tempDetectedFoods = [];
+
+            // 顯示成功提示
+            alert("成功將食材寫入冰箱庫存！");
         }
     </script>
 </body>
