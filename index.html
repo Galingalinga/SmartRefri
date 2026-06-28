@@ -470,7 +470,7 @@
 
     <!-- 頂部導航儀表板與系統資訊列 -->
     <header id="header-bar"
-        class="bg-cardDark/80 backdrop-blur-md border-b border-borderDark px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 sticky top-0 z-40 shadow-md">
+        class="bg-cardDark/80 backdrop-blur-md border-b border-borderDark px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sticky top-0 z-40 shadow-md">
         <!-- 冰箱基本資訊與模式 -->
         <div class="flex items-center gap-4">
             <div class="bg-accentBlue/10 text-accentBlue p-3 rounded-2xl border border-accentBlue/20">
@@ -485,9 +485,16 @@
             </div>
         </div>
 
+        <!-- 🔑 Gemini API 金鑰輸入 (自備金鑰，純前端部署架構) -->
+        <div class="flex items-center gap-2 bg-fridgeDark/60 border border-borderDark/80 px-4 py-2.5 rounded-2xl max-w-md w-full lg:w-auto">
+            <span class="text-xs text-accentBlue font-bold select-none whitespace-nowrap">🔑 API 金鑰:</span>
+            <input type="password" id="geminiApiKeyInput" placeholder="請貼上以 AIzaSy 開頭的金鑰..." onchange="saveApiKey(this.value)"
+                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-accentBlue font-mono">
+        </div>
+
         <!-- 冰箱動態時鐘與目前日期 (100% 離線本機顯示) -->
         <div
-            class="flex flex-col items-center justify-center bg-fridgeDark py-2 px-12 rounded-2xl border border-borderDark max-w-md w-full md:w-auto">
+            class="flex flex-col items-center justify-center bg-fridgeDark py-2 px-12 rounded-2xl border border-borderDark max-w-md w-full lg:w-auto">
             <div id="panelTime" class="text-3xl font-black text-white font-mono tracking-widest">
                 --:--:--
             </div>
@@ -886,6 +893,10 @@
 
             // 設定預設食材新增表單中的今日日期
             document.getElementById('foodExpiry').value = getOffsetDateString(7);
+
+            // 初始化 API 金鑰輸入框的顯示
+            const savedKey = localStorage.getItem('gemini_api_key') || '';
+            document.getElementById('geminiApiKeyInput').value = savedKey;
 
             // 啟動時檢查是否需要顯示每日過期食材推播
             checkDailyExpiryNotification();
@@ -1627,6 +1638,166 @@
 
         // ==================== 10. 相機辨識與無狀態 API 控制 ====================
         let cameraStream = null;
+
+        // 儲存 API 金鑰至 localStorage
+        function saveApiKey(key) {
+            localStorage.setItem('gemini_api_key', key.trim());
+            console.log('金鑰已更新並保存於 localStorage');
+        }
+
+        // 發送 Base64 圖片直接呼叫 Google Gemini API (純前端離線架構)
+        async function sendImageToGemini(base64Image) {
+            const loadingOverlay = document.getElementById('cameraLoadingOverlay');
+            const loadingText = document.getElementById('cameraLoadingText');
+            const captureBtn = document.getElementById('captureBtn');
+            const statusMsg = document.getElementById('cameraStatusMsg');
+
+            // 讀取本地儲存的金鑰
+            const apiKey = localStorage.getItem('gemini_api_key');
+            if (!apiKey || apiKey === 'YOUR_GEMINI_API_KEY' || !apiKey.trim()) {
+                alert('請先在頂部導航欄輸入您的 Gemini API 金鑰！');
+                loadingOverlay.classList.add('hidden');
+                captureBtn.disabled = false;
+                statusMsg.innerText = '錯誤：未設定 API 金鑰';
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+                return;
+            }
+
+            // 顯示載入遮罩並鎖定按鈕
+            loadingOverlay.classList.remove('hidden');
+            loadingText.innerText = "正在呼叫 Gemini 分析圖片中，請稍候...";
+            captureBtn.disabled = true;
+            statusMsg.innerText = "正在傳送多模態資料給雲端大腦...";
+            statusMsg.className = "text-center text-xs text-accentBlue mt-3 min-h-[1rem]";
+
+            try {
+                // 解析 Base64 格式
+                const matches = base64Image.match(/^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+);base64,(.+)$/);
+                let mimeType = 'image/jpeg';
+                let base64Data = base64Image;
+
+                if (matches && matches.length === 3) {
+                    mimeType = matches[1];
+                    base64Data = matches[2];
+                }
+
+                const todayStr = getOffsetDateString(0);
+                const defaultExpiryStr = getOffsetDateString(7);
+
+                const promptText = `
+You are a Smart Refrigerator AI Agent.
+Analyze the provided photo of new ingredients being placed into the refrigerator and identify all food items.
+Return a JSON array of ONLY the detected ingredients in the photo.
+
+Today's date is: ${todayStr}
+
+Guidelines:
+1. Identify the name, storage category ("冷藏室" or "冷凍庫"), quantity, and expiration date of each ingredient visible in the photo.
+2. Classification rules:
+   - "冷藏室": For milk, yogurt, eggs, vegetables, fruits, cheese, bread, desserts, drinks, etc.
+   - "冷凍庫": For raw meat, seafood, frozen food, ice cream, etc.
+3. Expiration Date Rules:
+   - For fresh milk ("鮮乳") or packaged meat ("包裝肉品") or products with printed dates: if a date is clearly visible on the item in the image, use that date.
+   - For loose fruits/vegetables ("散裝蔬果"), or if the date on the item is hidden/unclear/not visible: default the expiration date to exactly 7 days from today (i.e., today's date + 7 days, which is: ${defaultExpiryStr}).
+`;
+
+                // 準備呼叫模型 (優先呼叫 gemini-3.1-flash-lite，若失敗則使用 gemini-2.5-flash)
+                const models = ['gemini-3.1-flash-lite', 'gemini-2.5-flash'];
+                let response = null;
+                let successModel = '';
+                let lastError = null;
+
+                for (const modelName of models) {
+                    try {
+                        console.log(`直接從瀏覽器呼叫 Gemini API 模型: ${modelName}`);
+                        
+                        const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                contents: [
+                                    {
+                                        parts: [
+                                            { text: promptText },
+                                            {
+                                                inlineData: {
+                                                    mimeType: mimeType,
+                                                    data: base64Data
+                                                }
+                                            }
+                                        ]
+                                    }
+                                ],
+                                generationConfig: {
+                                    responseMimeType: 'application/json',
+                                    responseSchema: {
+                                        type: 'ARRAY',
+                                        description: 'The list of food items detected in the photo.',
+                                        items: {
+                                            type: 'OBJECT',
+                                            properties: {
+                                                name: { type: 'STRING', description: 'Name of the ingredient' },
+                                                category: { type: 'STRING', enum: ['冷藏室', '冷凍庫'], description: 'Storage location' },
+                                                qty: { type: 'INTEGER', description: 'Quantity of the item' },
+                                                expiry: { type: 'STRING', description: 'Expiration date in YYYY-MM-DD format' }
+                                            },
+                                            required: ['name', 'category', 'qty', 'expiry']
+                                        }
+                                    }
+                                }
+                            })
+                        });
+
+                        if (!apiResponse.ok) {
+                            const errorDetails = await apiResponse.json().catch(() => ({}));
+                            throw new Error(`API 錯誤: ${apiResponse.status} ${errorDetails.error?.message || ''}`);
+                        }
+
+                        response = await apiResponse.json();
+                        successModel = modelName;
+                        break; // 成功即跳出迴圈
+                    } catch (err) {
+                        console.warn(`模型 ${modelName} 呼叫失敗，嘗試下一個...`, err);
+                        lastError = err;
+                    }
+                }
+
+                if (!response) {
+                    throw lastError || new Error('所有 Gemini 模型呼叫皆失敗');
+                }
+
+                // 解析 Gemini 的 JSON 回應
+                let candidateText = "";
+                if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts[0]) {
+                    candidateText = response.candidates[0].content.parts[0].text;
+                }
+
+                if (!candidateText) {
+                    throw new Error("無法解析 Gemini API 的回傳文字內容");
+                }
+
+                console.log(`使用模型 ${successModel} 成功辨識：`, candidateText);
+                const foods = JSON.parse(candidateText.trim());
+
+                // 隱藏後台分析遮罩，關閉相機鏡頭以省電
+                loadingOverlay.classList.add('hidden');
+                closeCameraModal();
+
+                // 將辨識結果載入暫存變數中，並顯示確認彈窗
+                tempDetectedFoods = foods;
+                isConfirmEditing = false;
+                showRecognitionConfirmModal();
+
+            } catch (err) {
+                console.error("食材分析失敗：", err);
+                loadingOverlay.classList.add('hidden');
+                captureBtn.disabled = false;
+                statusMsg.innerText = `分析失敗: ${err.message}`;
+                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
+            }
+        }
 
         // 開啟相機彈窗並啟動視訊串流
         async function openCameraModal() {
