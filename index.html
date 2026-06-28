@@ -486,10 +486,16 @@
         </div>
 
         <!-- 🔑 Gemini API 金鑰輸入 (自備金鑰，純前端部署架構) -->
-        <div class="flex items-center gap-2 bg-fridgeDark/60 border border-borderDark/80 px-4 py-2.5 rounded-2xl max-w-md w-full lg:w-auto">
+        <div class="flex items-center gap-2 bg-fridgeDark/60 border border-borderDark/80 px-4 py-2.5 rounded-2xl max-w-lg w-full lg:w-auto">
             <span class="text-xs text-accentBlue font-bold select-none whitespace-nowrap">🔑 API 金鑰:</span>
-            <input type="password" id="geminiApiKeyInput" placeholder="請貼上以 AIzaSy 開頭的金鑰..." onchange="saveApiKey(this.value)"
-                class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-accentBlue font-mono">
+            <div class="flex items-center gap-1.5 w-full">
+                <input type="password" id="geminiApiKeyInput" placeholder="請貼上以 AIzaSy 開頭的金鑰..." oninput="saveApiKey(this.value)"
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-accentBlue font-mono">
+                <button onclick="triggerSaveFeedback()" id="saveKeyBtn"
+                    class="bg-accentBlue hover:bg-[#CEE4FE] text-fridgeDark font-bold px-3 py-1.5 rounded-lg text-xs transition select-none active:scale-95 whitespace-nowrap">
+                    儲存
+                </button>
+            </div>
         </div>
 
         <!-- 冰箱動態時鐘與目前日期 (100% 離線本機顯示) -->
@@ -1643,6 +1649,21 @@
         function saveApiKey(key) {
             localStorage.setItem('gemini_api_key', key.trim());
             console.log('金鑰已更新並保存於 localStorage');
+        }
+
+        // 提供點擊儲存按鈕的視覺反饋
+        function triggerSaveFeedback() {
+            const keyInput = document.getElementById('geminiApiKeyInput');
+            saveApiKey(keyInput.value);
+            
+            const btn = document.getElementById('saveKeyBtn');
+            btn.innerText = "已儲存 ✓";
+            btn.className = "bg-statusGreen text-white font-bold px-3 py-1.5 rounded-lg text-xs transition select-none";
+            
+            setTimeout(() => {
+                btn.innerText = "儲存";
+                btn.className = "bg-accentBlue hover:bg-[#CEE4FE] text-fridgeDark font-bold px-3 py-1.5 rounded-lg text-xs transition select-none active:scale-95 whitespace-nowrap";
+            }, 1500);
         }
 
         // 發送 Base64 圖片直接呼叫 Google Gemini API (純前端離線架構)
