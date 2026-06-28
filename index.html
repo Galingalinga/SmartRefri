@@ -1946,60 +1946,6 @@ Guidelines:
             }
         }
 
-        // 發送 Base64 圖片至 Express 後端 API 呼叫 Gemini
-        async function sendImageToGemini(base64Image) {
-            const loadingOverlay = document.getElementById('cameraLoadingOverlay');
-            const loadingText = document.getElementById('cameraLoadingText');
-            const captureBtn = document.getElementById('captureBtn');
-            const statusMsg = document.getElementById('cameraStatusMsg');
-
-            // 顯示載入遮罩並鎖定按鈕
-            loadingOverlay.classList.remove('hidden');
-            loadingText.innerText = "正在傳送照片給 Gemini 分析中，請稍候...";
-            captureBtn.disabled = true;
-            statusMsg.innerText = "正在進行食材辨識與庫存合併...";
-            statusMsg.className = "text-center text-xs text-accentBlue mt-3 min-h-[1rem]";
-
-            try {
-                // 無狀態傳輸：連同當前 localStorage 庫存一併送給後端
-                const requestPayload = {
-                    image: base64Image,
-                    currentInventory: state.foods
-                };
-
-                const response = await fetch('/api/recognize', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(requestPayload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`伺服器回應錯誤 (狀態碼 ${response.status})`);
-                }
-
-                const data = await response.json();
-                if (data.success && data.foods) {
-                    // 隱藏後台分析遮罩，關閉相機鏡頭以省電
-                    loadingOverlay.classList.add('hidden');
-                    closeCameraModal();
-
-                    // 將辨識結果載入暫存變數中，並顯示確認彈窗
-                    tempDetectedFoods = data.foods;
-                    isConfirmEditing = false;
-                    showRecognitionConfirmModal();
-                } else {
-                    throw new Error(data.error || '辨識結果無效');
-                }
-            } catch (err) {
-                console.error("食材分析失敗：", err);
-                loadingOverlay.classList.add('hidden');
-                captureBtn.disabled = false;
-                statusMsg.innerText = `分析失敗: ${err.message}`;
-                statusMsg.className = "text-center text-xs text-statusRed mt-3 min-h-[1rem]";
-            }
-        }
 
         // ==================== 11. 每日 5 點自動推播快過期食材機制 ====================
 
